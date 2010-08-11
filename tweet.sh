@@ -8,10 +8,12 @@ if [ "$1" = "local" ]; then
     PREFIX=.
     HAS_RANDOM=y
     HOST=$2
+    ECHO=echo
 else
     PREFIX=/etc/twitter
     HAS_RANDOM=n
     HOST=localhost
+    ECHO=logger
 fi
 
 get_quote() {
@@ -31,8 +33,6 @@ get_quote() {
     echo $(eval sed -n '${number}p' $PREFIX/messages.txt) | eval sed -e 's/SCREEN_NAME/$screen_name/'
 }
 
-screen_name=""
-text=""
 tweet=""
 logger "Listening for tweets"
 while [ 1 ]; do
@@ -40,38 +40,42 @@ while [ 1 ]; do
         if [ "$tmp" = "" ]; then
             continue
         fi
+        $ECHO $tmp
 
-        # This handles </status> surrounded by spaces
+        # This handles </status> surrounded by spaces. Optimization from "sed" to run embedded
         t="${tmp##*</status}"
         if [ "${t##>*}" != "" ]; then
             tweet="${tweet}${tmp}"
         else
             screen_name=$(echo $tweet | sed -n -e 's/.*<screen_name>\(.*\)<\/screen_name>.*/\1/p')
-            echo "$screen_name triggered a capture"
+            $ECHO "$screen_name triggered a capture"
             $PREFIX/curl -s -o $PREFIX/image.jpg http://root:$PASSWD@$HOST/jpg/image.jpg?compression=10
-            $PREFIX/curl -s http://root:$PASSWD@$HOST/axis-cgi/playclip.cgi?clip=9
-            echo "Got image!"
+            $PREFIX/curl -s -o- http://root:$PASSWD@$HOST/axis-cgi/playclip.cgi?clip=9
+            $ECHO "Got image!"
             quote="$(get_quote $screen_name)"
-            echo $quote
+            $ECHO $quote
 
+            # Upload photo. Retry if failed
             MAX_FAILS=3
             FAILS=0
             while [ $FAILS -lt $MAX_FAILS ]; do
-                $PREFIX/curl -s -oreply -F message="$quote #xxwc" -F username=SSWCHolken -F password=futureinstereo -F media=@$PREFIX/image.jpg http://yfrog.com/api/uploadAndPost
-                REPLY=$(cat reply)
+                $PREFIX/curl -s -o$PREFIX/reply -F message="$quote #xxwc" -F username=SSWCHolken -F password=futureinstereo -F media=@$PREFIX/image.jpg http://yfrog.com/api/uploadAndPost
+                REPLY=$(cat $PREFIX/reply)
+                $ECHO $REPLY
                 REPLY=${REPLY#*fail}
                 REPLY=${REPLY%%\">*}
                 if [ "$REPLY" = "" ]; then
                     FAILS=$(($FAILS + 1))
                     if [ $FAILS -eq $MAX_FAILS ]; then
-                        echo "TODO: send a tweet to @brissmyr"
+                        $ECHO "TODO: send a tweet to @brissmyr"
                     else
-                        echo "FAIL! Could not upload photo. Retrying..."
+                        $ECHO "FAIL! Could not upload photo. Retrying..."
                     fi
                 else
-                    echo "Photo uploaded!"
-                    FAILS=$MAX_FAILS
+                    $ECHO "Photo uploaded!"
+                    FAILS=$MAX_FAILS # will exit the while-loop
                 fi
             done
+            tweet=""
         fi
 done
