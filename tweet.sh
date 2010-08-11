@@ -52,13 +52,15 @@ while [ 1 ]; do
             $PREFIX/curl -s -o $PREFIX/image.jpg http://root:$PASSWD@$HOST/jpg/image.jpg?compression=10
             $PREFIX/curl -s -o- http://root:$PASSWD@$HOST/axis-cgi/playclip.cgi?clip=9
             $ECHO "Got image!"
-            quote="$(get_quote $screen_name)"
-            $ECHO $quote
 
             # Upload photo. Retry if failed
             MAX_FAILS=3
             FAILS=0
             while [ $FAILS -lt $MAX_FAILS ]; do
+                # Get new quote each retry. Avoids misentered letters and symbols
+                quote="$(get_quote $screen_name)"
+                $ECHO $quote
+
                 $PREFIX/curl -s -o$PREFIX/reply -F message="$quote #xxwc" -F username=SSWCHolken -F password=futureinstereo -F media=@$PREFIX/image.jpg http://yfrog.com/api/uploadAndPost
                 REPLY=$(cat $PREFIX/reply)
                 $ECHO $REPLY
