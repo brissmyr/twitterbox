@@ -33,7 +33,7 @@ get_quote() {
     echo $(eval sed -n '${number}p' $PREFIX/messages.txt) | eval sed -e 's/SCREEN_NAME/$screen_name/'
 }
 
-echo "Listening for tweets"
+$ECHO "Listening for tweets"
 tweet=""
 while [ 1 ]; do
         read tmp || exit
