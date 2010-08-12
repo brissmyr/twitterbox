@@ -33,23 +33,22 @@ get_quote() {
     echo $(eval sed -n '${number}p' $PREFIX/messages.txt) | eval sed -e 's/SCREEN_NAME/$screen_name/'
 }
 
+echo "Listening for tweets"
 tweet=""
-logger "Listening for tweets"
 while [ 1 ]; do
-        read tmp
+        read tmp || exit
         if [ "$tmp" = "" ]; then
             continue
         fi
-        $ECHO $tmp
 
         # This handles </status> surrounded by spaces. Optimization from "sed" to run embedded
         t="${tmp##*</status}"
         if [ "${t##>*}" != "" ]; then
             tweet="${tweet}${tmp}"
         else
-            screen_name=$(echo $tweet | sed -n -e 's/.*<screen_name>\(.*\)<\/screen_name>.*/\1/p')
             $ECHO "$screen_name triggered a capture"
-            $PREFIX/curl -s -o $PREFIX/image.jpg http://root:$PASSWD@$HOST/jpg/image.jpg?compression=10
+            $PREFIX/curl -s -o $PREFIX/image.jpg http://root:$PASSWD@$HOST/jpg/image.jpg?compression=15
+            screen_name=$(echo $tweet | sed -n -e 's/.*<screen_name>\(.*\)<\/screen_name>.*/\1/p')
             $PREFIX/curl -s -o- http://root:$PASSWD@$HOST/axis-cgi/playclip.cgi?clip=9
             $ECHO "Got image!"
 
